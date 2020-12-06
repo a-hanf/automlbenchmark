@@ -14,7 +14,7 @@ SUDO apt-get install -y libcairo2-dev libudunits2-dev
 fi
 
 SUDO Rscript -e 'options(install.packages.check.source="no"); install.packages(c("remotes", "checkmate", "R6", "xgboost", "ranger", "LiblineaR", "emoa", "glmnet"))'
-SUDO Rscript -e 'remotes::install_github("https://github.com/a-hanf/mlr3automl", dependencies = TRUE)'
+SUDO Rscript -e 'remotes::install_github("https://github.com/a-hanf/mlr3automl@forward_search_numeric_imputation", dependencies = TRUE)'
 SUDO Rscript -e 'remotes::install_github("https://github.com/mlr-org/mlr3tuning@autotuner-notimeout")'
 SUDO Rscript -e 'remotes::install_github("https://github.com/mlr-org/mlr3@master")'
 
