@@ -13,13 +13,8 @@ SUDO apt-get install -y libssl-dev libcurl4-openssl-dev
 SUDO apt-get install -y libcairo2-dev libudunits2-dev
 fi
 
-SUDO Rscript -e 'options(install.packages.check.source="no"); install.packages(c("remotes", "checkmate", "R6", "xgboost", "ranger", "LiblineaR", "emoa"), repos="https://cloud.r-project.org/", dependencies = TRUE)'
-SUDO Rscript -e 'remotes::install_github("https://github.com/mlr-org/mlr3pipelines")'
-SUDO Rscript -e 'remotes::install_github("https://github.com/mlr-org/mlr3oml")'
-SUDO Rscript -e 'remotes::install_github("https://github.com/mlr-org/paradox")'
-SUDO Rscript -e 'remotes::install_github("https://github.com/mlr-org/mlr3extralearners")'
-SUDO Rscript -e 'remotes::install_github("https://github.com/mlr-org/mlr3misc")'
-SUDO Rscript -e 'remotes::install_github("https://github.com/a-hanf/mlr3automl")'
+SUDO Rscript -e 'options(install.packages.check.source="no"); install.packages(c("remotes", "checkmate", "R6", "xgboost", "ranger", "LiblineaR", "emoa", "glmnet"))'
+SUDO Rscript -e 'remotes::install_github("https://github.com/a-hanf/mlr3automl", dependencies = TRUE)'
 SUDO Rscript -e 'remotes::install_github("https://github.com/mlr-org/mlr3tuning@autotuner-notimeout")'
 SUDO Rscript -e 'remotes::install_github("https://github.com/mlr-org/mlr3@master")'
 
