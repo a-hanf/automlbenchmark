@@ -56,7 +56,7 @@ run <- function(train_file, test_file, target.index, type, output_predictions_fi
   print(paste("Finished training model after ", difftime(Sys.time(), start_time, units = "secs"), " seconds"))
   preds <- model$predict(test)
   print(paste("Finished predictions after ", difftime(Sys.time(), start_time, units = "secs"), " seconds"))
-  saveRDS(model$learner$archive$data(), paste("~/tuning_archives/", name, model$measure$id, preprocessing, portfolio, eda, gsub("\\s|:", "_", Sys.time()), sep = "_"))
+  saveRDS(model$learner$archive$data(), paste("~/tuning_archives/", name, model$measure$id, preprocessing, portfolio, gsub("\\s|:", "_", Sys.time()), sep = "_"))
 
   if (type == "classification") {
     sorted_colnames = sort(colnames(preds$data$prob))
