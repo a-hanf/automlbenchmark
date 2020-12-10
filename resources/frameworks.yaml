@@ -92,6 +92,10 @@ mljarsupervised_compete:
   params:
     mode: Compete   # set mode for Compete, default mode is Explain
 
+mlr3automl:
+  version: 'stable'
+  project: https://github.com/a-hanf/mlr3automl
+
 oboe:
   version: 'latest'
   project: https://github.com/udellgroup/oboe
@@ -113,9 +117,6 @@ TPOT:
 #    population_size: 25
 #    verbosity: 2
 
-mlr3automl:
-  version: '0.0.0.9000'
-  project: https://github.com/a-hanf/mlr3automl
 
 
 
