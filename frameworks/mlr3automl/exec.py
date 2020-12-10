@@ -5,6 +5,7 @@ from amlb.benchmark import TaskConfig
 from amlb.data import Dataset
 from amlb.datautils import read_csv
 from amlb.utils import dir_of, run_cmd
+from frameworks.shared.callee import save_metadata
 
 log = logging.getLogger(__name__)
 
@@ -20,7 +21,7 @@ def run(dataset: Dataset, config: TaskConfig):
     run_cmd(r"""Rscript --vanilla -e "
                 source('{script}'); 
                 run('{train}', '{test}', target.index = {target_index}, '{type}', '{output}', {cores}, 
-                    time.budget = {time_budget}, meta_results_file='{meta_results}')
+                    time.budget = {time_budget}, meta_results_file='{meta_results}', seed='{seed}', name='{name}')
                 " """.format(
         script=os.path.join(here, 'exec.R'),
         train=dataset.train.path,

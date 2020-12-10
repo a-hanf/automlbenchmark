@@ -45,7 +45,7 @@ run <- function(train_file, test_file, target.index, type, output_predictions_fi
   train_duration <- system.time(training())[['elapsed']]
   print(paste("Finished training model after ", difftime(Sys.time(), start_time, units = "secs"), " seconds"))
 
-  prediction <- function() preds <<- predict(mod, newdata = test)$data
+  prediction <- function() preds <<- model$predict(test)
   predict_duration <- system.time(prediction())[['elapsed']]
   print(paste("Finished predictions after ", difftime(Sys.time(), start_time, units = "secs"), " seconds"))
 
