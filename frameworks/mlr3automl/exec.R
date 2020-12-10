@@ -39,7 +39,7 @@ run <- function(train_file, test_file, target.index, type, output_predictions_fi
 
   model <- NULL
   training <- function() {
-    model <<- AutoML(train, runtime = as.integer(remaining_budget * 0.8), measure = measure)
+    model <<- AutoML(train, runtime = as.integer(remaining_budget * 0.8), measure = measure, preprocessing = "full")
     model$train()
   }
 
