@@ -50,6 +50,7 @@ def list_all_files(paths, filtr=None):
     :param paths: the directories to look into.
     :param filtr: None, or a predicate function returning True iff the file should be listed.
     """
+    filtr = filtr or (lambda _: True)
     all_files = []
     paths = paths if isinstance(paths, list) else [paths]
     for path in paths:
@@ -86,7 +87,7 @@ def backup_file(file_path):
         return
     p = split_path(src_path)
     mod_time = dt.datetime.utcfromtimestamp(os.path.getmtime(src_path))
-    dest_name = ''.join([p.basename, '_', datetime_iso(mod_time, date_sep='', time_sep=''), p.extension])
+    dest_name = ''.join([p.basename, '.', datetime_iso(mod_time, date_sep='', time_sep=''), p.extension])
     dest_dir = os.path.join(p.dirname, 'backup')
     touch(dest_dir, as_dir=True)
     dest_path = os.path.join(dest_dir, dest_name)

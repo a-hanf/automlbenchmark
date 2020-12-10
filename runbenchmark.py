@@ -1,26 +1,29 @@
 import argparse
 import logging
 import os
+import re
 import sys
 
 # prevent asap other modules from defining the root logger using basicConfig
 import amlb.logger
 
 import amlb
-from amlb.utils import Namespace as ns, config_load, datetime_iso, str2bool
+from amlb.utils import Namespace as ns, config_load, datetime_iso, str2bool, str_sanitize
 from amlb import log, AutoMLError
 
 
 parser = argparse.ArgumentParser()
 parser.add_argument('framework', type=str,
-                    help="The framework to evaluate as defined by default in resources/frameworks.yaml.")
+                    help="The framework to evaluate as defined by default in resources/frameworks.yaml. "
+                         "To use a labelled framework (i.e. a framework defined in resources/frameworks-{label}.yaml), "
+                         "use the syntax {framework}:{label}.")
 parser.add_argument('benchmark', type=str, nargs='?', default='test',
                     help="The benchmark type to run as defined by default in resources/benchmarks/{benchmark}.yaml, "
                          "a path to a benchmark description file, or an openml suite or task. OpenML references should "
                          "be formatted as 'openml/s/X' and 'openml/t/Y', for studies and tasks respectively. Defaults to `%(default)s`.")
 parser.add_argument('constraint', type=str, nargs='?', default='test',
                     help="The constraint definition to use as defined by default in resources/constraints.yaml. Defaults to `test`.")
-parser.add_argument('-m', '--mode', choices=['local', 'docker', 'aws', 'singularity'], default='local',
+parser.add_argument('-m', '--mode', choices=['local', 'aws', 'docker', 'singularity'], default='local',
                     help="The mode that specifies how/where the benchmark tasks will be running. Defaults to %(default)s.")
 parser.add_argument('-t', '--task', metavar='task_id', nargs='*', default=None,
                     help="The specific task name (as defined in the benchmark file) to run. "
@@ -64,9 +67,10 @@ extras = {t[0]: t[1] if len(t) > 1 else True for t in [x.split('=', 1) for x in 
 
 now_str = datetime_iso(date_sep='', time_sep='')
 sid = (args.session if args.session is not None
-       else "{}_{}".format('_'.join([args.framework,
-                                     os.path.splitext(os.path.basename(args.benchmark))[0],
-                                     args.constraint,
+       else "{}.{}".format('.'.join([str_sanitize(args.framework.split(':', 1)[0]),
+                                     str_sanitize(args.benchmark if re.fullmatch(r"(openml)/[st]/\d+", args.benchmark)
+                                                  else os.path.splitext(os.path.basename(args.benchmark))[0]),
+                                     str_sanitize(args.constraint),
                                      extras.get('run_mode', args.mode)])
                               .lower(),
                            now_str))
@@ -77,8 +81,8 @@ log_dir = amlb.resources.output_dirs(args.outdir or os.path.join(os.getcwd(), 'l
 # now_str = datetime_iso(time=False, no_sep=True)
 if args.profiling:
     logging.TRACE = logging.INFO
-amlb.logger.setup(log_file=os.path.join(log_dir, '{script}_{now}.log'.format(script=script_name, now=now_str)),
-                  root_file=os.path.join(log_dir, '{script}_{now}_full.log'.format(script=script_name, now=now_str)),
+amlb.logger.setup(log_file=os.path.join(log_dir, '{script}.{now}.log'.format(script=script_name, now=now_str)),
+                  root_file=os.path.join(log_dir, '{script}.{now}.full.log'.format(script=script_name, now=now_str)),
                   root_level='INFO', app_level='DEBUG', console_level='INFO', print_to_log=True)
 
 log.info("Running `%s` on `%s` benchmarks in `%s` mode.", args.framework, args.benchmark, args.mode)

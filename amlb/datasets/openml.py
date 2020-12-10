@@ -16,6 +16,9 @@ from ..utils import lazy_property, obj_size, profile, to_mb
 
 log = logging.getLogger(__name__)
 
+# hack (only adding a ? to the regexp pattern) to ensure that '?' values remain quoted when we save dataplits in arff format.
+arff._RE_QUOTE_CHARS = re.compile(r'[?"\'\\\s%,\000-\031]', re.UNICODE)
+
 
 class OpenmlLoader:
 
@@ -73,13 +76,21 @@ class OpenmlDataset(Dataset):
 
     @lazy_property
     def type(self):
-        nclasses = self._oml_dataset.qualities.get('NumberOfClasses', 0)
-        if nclasses > 2:
-            return DatasetType.multiclass
-        elif nclasses == 2:
-            return DatasetType.binary
+        def get_type(card):
+            if card > 2:
+                return DatasetType.multiclass
+            elif card == 2:
+                return DatasetType.binary
+            elif card == 0:
+                return DatasetType.regression
+            return None
+
+        nclasses = self._oml_dataset.qualities.get('NumberOfClasses', -1)
+        if nclasses >= 0:
+            return get_type(nclasses)
         else:
-            return DatasetType.regression
+            target = next(f for f in self.features if f.is_target)
+            return get_type(len(target.values))
 
     @property
     @profile(logger=log)

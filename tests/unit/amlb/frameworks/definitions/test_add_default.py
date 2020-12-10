@@ -1,5 +1,5 @@
 import pytest
-from amlb.framework_definitions import _add_default_module, _add_default_version, \
+from amlb.frameworks.definitions import _add_default_module, _add_default_version, \
     _add_default_setup_args, _add_default_setup_script, _add_default_setup_cmd, \
     _add_default_params, _add_default_image
 from amlb.utils import Namespace
@@ -41,11 +41,11 @@ def test_module_is_not_replaced_if_defined():
     assert framework.module == "custom"
 
 
-def test_version_is_set_to_latest_if_undefined():
+def test_version_is_set_to_stable_if_undefined():
     framework = Namespace()
     _add_default_version(framework)
     assert "version" in framework
-    assert framework.version == "latest"
+    assert framework.version == "stable"
 
 
 def test_version_is_kept_if_defined():
@@ -81,19 +81,19 @@ def test_setup_args_kept_if_defined():
 
 def test_setup_script_set_to_none_if_undefined(simple_resource):
     framework = Namespace()
-    _add_default_setup_script(framework, simple_resource)
+    _add_default_setup_script(framework, simple_resource.config)
     assert framework.setup_script is None
 
 
 def test_setup_script_kept_if_defined(simple_resource):
     framework = Namespace(module="my_module", setup_script="t.sh")
-    _add_default_setup_script(framework, simple_resource)
+    _add_default_setup_script(framework, simple_resource.config)
     assert framework.setup_script == "t.sh"
 
 
 def test_setup_script_interpolates_module(simple_resource):
     framework = Namespace(module="my_module", setup_script="{module}/t.sh")
-    _add_default_setup_script(framework, simple_resource)
+    _add_default_setup_script(framework, simple_resource.config)
     assert framework.setup_script == "my_module/t.sh"
 
 
@@ -108,13 +108,13 @@ def test_setup_script_interpolates_module(simple_resource):
 )
 def test_setup_script_interpolates_directory(simple_resource, alias, actual):
     framework = Namespace(setup_script=f"{{{alias}}}/t.sh", module="")
-    _add_default_setup_script(framework, simple_resource)
+    _add_default_setup_script(framework, simple_resource.config)
     assert framework.setup_script.endswith(f"{actual}/t.sh")
 
 
 def test_setup_cmd_set_to_none_if_undefined(simple_resource):
     framework = Namespace()
-    _add_default_setup_cmd(framework, simple_resource)
+    _add_default_setup_cmd(framework, simple_resource.config)
     assert framework.setup_cmd == None
     assert framework._setup_cmd == None
 
@@ -122,19 +122,19 @@ def test_setup_cmd_set_to_none_if_undefined(simple_resource):
 @pytest.mark.parametrize("commands", ["original", ["one", "two"]])
 def test_setup_cmd_saves_original_if_defined(simple_resource, commands):
     framework = Namespace(setup_cmd=commands)
-    _add_default_setup_cmd(framework, simple_resource)
+    _add_default_setup_cmd(framework, simple_resource.config)
     assert framework._setup_cmd == commands
 
 
 def test_setup_cmd_converts_str_definition_to_list(simple_resource):
     framework = Namespace(setup_cmd="str_command")
-    _add_default_setup_cmd(framework, simple_resource)
+    _add_default_setup_cmd(framework, simple_resource.config)
     assert framework.setup_cmd == ["str_command"]
 
 
 def test_setup_cmd_does_not_convert_list_definition(simple_resource):
     framework = Namespace(setup_cmd=["str", "commands"])
-    _add_default_setup_cmd(framework, simple_resource)
+    _add_default_setup_cmd(framework, simple_resource.config)
     assert framework.setup_cmd == ["str", "commands"]
 
 
@@ -149,7 +149,7 @@ def test_setup_cmd_does_not_convert_list_definition(simple_resource):
 )
 def test_setup_cmd_interpolates_directory(simple_resource, alias, actual):
     framework = Namespace(setup_cmd=[f"{{{alias}}}"])
-    _add_default_setup_cmd(framework, simple_resource)
+    _add_default_setup_cmd(framework, simple_resource.config)
     assert framework.setup_cmd[0].endswith(actual)
 
 

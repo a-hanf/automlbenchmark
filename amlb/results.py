@@ -3,6 +3,7 @@
 as well as logic to compute, format, save, read and merge scores obtained from those predictions (cf. ``Result`` and ``Scoreboard``).
 """
 from functools import partial
+import collections
 import io
 import logging
 import math
@@ -17,7 +18,7 @@ import pandas as pd
 from .data import Dataset, DatasetType, Feature
 from .datautils import accuracy_score, confusion_matrix, f1_score, log_loss, balanced_accuracy_score, mean_absolute_error, mean_squared_error, mean_squared_log_error, r2_score, roc_auc_score, read_csv, write_csv, is_data_frame, to_data_frame
 from .resources import get as rget, config as rconfig, output_dirs
-from .utils import Namespace, backup_file, cached, datetime_iso, memoize, profile
+from .utils import Namespace, backup_file, cached, datetime_iso, json_load, memoize, profile
 
 log = logging.getLogger(__name__)
 
@@ -39,16 +40,17 @@ class Scoreboard:
 
     @classmethod
     def from_file(cls, path):
+        sep = rconfig().token_separator
         folder, basename = os.path.split(path)
         framework_name = None
         benchmark_name = None
         task_name = None
         patterns = [
             cls.results_file,
-            r"(?P<framework>[\w\-]+)_benchmark_(?P<benchmark>[\w\-]+)\.csv",
-            r"benchmark_(?P<benchmark>[\w\-]+)\.csv",
-            r"(?P<framework>[\w\-]+)_task_(?P<task>[\w\-]+)\.csv",
-            r"task_(?P<task>[\w\-]+)\.csv",
+            rf"(?P<framework>[\w\-]+){sep}benchmark{sep}(?P<benchmark>[\w\-]+)\.csv",
+            rf"benchmark{sep}(?P<benchmark>[\w\-]+)\.csv",
+            rf"(?P<framework>[\w\-]+){sep}task{sep}(?P<task>[\w\-]+)\.csv",
+            rf"task{sep}(?P<task>[\w\-]+)\.csv",
             r"(?P<framework>[\w\-]+)\.csv",
         ]
         found = False
@@ -102,21 +104,21 @@ class Scoreboard:
         self.framework_name = framework_name
         self.benchmark_name = benchmark_name
         self.task_name = task_name
-        self.scores_dir = scores_dir if scores_dir \
-            else output_dirs(rconfig().output_dir, rconfig().sid, ['scores']).scores
+        self.scores_dir = (scores_dir if scores_dir
+                           else output_dirs(rconfig().output_dir, rconfig().sid, ['scores']).scores)
         self.scores = scores if scores is not None else self._load()
 
     @cached
     def as_data_frame(self):
         # index = ['task', 'framework', 'fold']
         index = []
-        df = self.scores if is_data_frame(self.scores) \
-            else to_data_frame([dict(sc) for sc in self.scores])
+        df = (self.scores if is_data_frame(self.scores)
+              else to_data_frame([dict(sc) for sc in self.scores]))
         if df.empty:
             # avoid dtype conversions during reindexing on empty frame
             return df
         fixed_cols = ['id', 'task', 'framework', 'constraint', 'fold', 'result', 'metric', 'mode', 'version',
-                      'params', 'tag', 'utc', 'duration', 'models', 'seed', 'info']
+                      'params', 'app_version', 'utc', 'duration', 'training_duration', 'predict_duration', 'models_count', 'seed', 'info']
         fixed_cols = [col for col in fixed_cols if col not in index]
         dynamic_cols = [col for col in df.columns if col not in index and col not in fixed_cols]
         dynamic_cols.sort()
@@ -132,8 +134,8 @@ class Scoreboard:
 
         df = self.as_data_frame()
         force_str_cols = ['id']
-        nanable_int_cols = ['fold', 'models', 'seed']
-        low_precision_float_cols = ['duration']
+        nanable_int_cols = ['fold', 'models_count', 'seed']
+        low_precision_float_cols = ['duration', 'training_duration', 'predict_duration']
         high_precision_float_cols = [col for col in df.select_dtypes(include=[np.float]).columns if col not in ([] + nanable_int_cols + low_precision_float_cols)]
         for col in force_str_cols:
             df[col] = df[col].astype(np.object).map(str_print).astype(np.str)
@@ -163,18 +165,19 @@ class Scoreboard:
                           scores_dir=self.scores_dir)
 
     def _score_file(self):
+        sep = rconfig().token_separator
         if self.framework_name:
             if self.task_name:
-                file_name = "{framework}_task_{task}.csv".format(framework=self.framework_name, task=self.task_name)
+                file_name = f"{self.framework_name}{sep}task_{self.task_name}.csv"
             elif self.benchmark_name:
-                file_name = "{framework}_benchmark_{benchmark}.csv".format(framework=self.framework_name, benchmark=self.benchmark_name)
+                file_name = f"{self.framework_name}{sep}benchmark_{self.benchmark_name}.csv"
             else:
-                file_name = "{framework}.csv".format(framework=self.framework_name)
+                file_name = f"{self.framework_name}.csv"
         else:
             if self.task_name:
-                file_name = "task_{task}.csv".format(task=self.task_name)
+                file_name = f"task_{self.task_name}.csv"
             elif self.benchmark_name:
-                file_name = "benchmark_{benchmark}.csv".format(benchmark=self.benchmark_name)
+                file_name = f"benchmark_{self.benchmark_name}.csv"
             else:
                 file_name = Scoreboard.results_file
 
@@ -216,6 +219,7 @@ class TaskResult:
         :param truth:
         :param probabilities_labels:
         :param target_is_encoded:
+        :param preview:
         :return: None
         """
         log.debug("Saving predictions to `%s`.", output_file)
@@ -288,20 +292,38 @@ class TaskResult:
 
     @classmethod
     def score_from_predictions_file(cls, path):
+        sep = rconfig().token_separator
         folder, basename = os.path.split(path)
-        pattern = r"(?P<framework>[\w\-]+?)_(?P<task>[\w\-]+)_(?P<fold>\d+)(_(?P<datetime>\d{8}T\d{6}))?.csv"
-        m = re.fullmatch(pattern, basename)
-        if not m:
+        folder_g = collections.defaultdict(lambda: None)
+        if folder:
+            folder_pat = rf"/(?P<framework>[\w\-]+?){sep}(?P<benchmark>[\w\-]+){sep}(?P<constraint>[\w\-]+){sep}(?P<mode>[\w\-]+)({sep}(?P<datetime>\d{8}T\d{6}))/"
+            folder_m = re.match(folder_pat, folder)
+            if folder_m:
+                folder_g = folder_m.groupdict()
+
+        file_pat = rf"(?P<framework>[\w\-]+?){sep}(?P<task>[\w\-]+){sep}(?P<fold>\d+)\.csv"
+        file_m = re.fullmatch(file_pat, basename)
+        if not file_m:
             log.error("Predictions file `%s` has wrong naming format.", path)
             return None
 
-        d = m.groupdict()
-        framework_name = d['framework']
-        task_name = d['task']
-        fold = int(d['fold'])
+        file_g = file_m.groupdict()
+        framework_name = file_g['framework']
+        task_name = file_g['task']
+        fold = int(file_g['fold'])
+        constraint = folder_g['constraint']
+        benchmark = folder_g['benchmark']
+        task = Namespace(name=task_name, id=task_name)
+        if benchmark:
+            try:
+                tasks, _, _ = rget().benchmark_definition(benchmark)
+                task = next(t for t in tasks if t.name==task_name)
+            except:
+                pass
+
         result = cls.load_predictions(path)
-        task_result = cls(task_name, fold, '')
-        metrics = rconfig().benchmarks.metrics.get(result.type.name)
+        task_result = cls(task, fold, constraint, '')
+        metrics = rconfig().benchmarks.metrics[result.type.name]
         return task_result.compute_scores(framework_name, metrics, result=result)
 
     def __init__(self, task_def, fold: int, constraint: str, predictions_dir=None):
@@ -312,47 +334,51 @@ class TaskResult:
                                 else output_dirs(rconfig().output_dir, rconfig().sid, ['predictions']).predictions)
 
     @memoize
-    def get_result(self, framework_name):
-        return self.load_predictions(self._predictions_file(framework_name))
+    def get_result(self):
+        return self.load_predictions(self._predictions_file)
+
+    def get_metadata(self):
+        return json_load(self._metadata_file, as_namespace=True)
 
     @profile(logger=log)
-    def compute_scores(self, framework_name, metrics, result=None, meta_result=None):
-        framework_def, _ = rget().framework_definition(framework_name)
+    def compute_scores(self, result=None, meta_result=None):
         meta_result = Namespace({} if meta_result is None else meta_result)
+        metadata = self.get_metadata()
         scores = Namespace(
             id=self.task.id,
             task=self.task.name,
             constraint=self.constraint,
-            framework=framework_name,
-            version=framework_def.version,
-            params=(str(meta_result.params) if 'params' in meta_result and bool(meta_result.params)
-                    else str(framework_def.params) if len(framework_def.params) > 0
-                    else ''),
+            framework=metadata.framework,
+            version=metadata.version if 'version' in metadata else metadata.framework_version,
+            params=str(metadata.framework_params) if len(metadata.framework_params) > 0 else '',
             fold=self.fold,
             mode=rconfig().run_mode,
-            seed=rget().seed(self.fold),
-            tag=rget().project_info.tag,
+            seed=metadata.seed,
+            app_version=rget().app_version,
             utc=datetime_iso(),
-            duration=meta_result.training_duration if 'training_duration' in meta_result else nan,
-            models=meta_result.models_count if 'models_count' in meta_result else nan,
+            metric=metadata.metric,
+            duration=nan
         )
-        result = self.get_result(framework_name) if result is None else result
-        for metric in metrics:
+        required_metares = ['training_duration', 'predict_duration', 'models_count']
+        for m in required_metares:
+            scores[m] = meta_result[m] if m in meta_result else nan
+        result = self.get_result() if result is None else result
+        for metric in metadata.metrics:
             score = result.evaluate(metric)
             scores[metric] = score
-        scores.metric = metrics[0] if len(metrics) > 0 else ''
         scores.result = scores[scores.metric] if scores.metric in scores else result.evaluate(scores.metric)
         scores.info = result.info
-        scores % Namespace({k: v for k, v in meta_result if k not in ['models_count', 'training_duration']})
+        scores % Namespace({k: v for k, v in meta_result if k not in required_metares})
         log.info("Metric scores: %s", scores)
         return scores
 
-    def _predictions_file(self, framework_name):
-        return os.path.join(self.predictions_dir, "{framework}_{task}_{fold}.csv").format(
-            framework=framework_name.lower(),
-            task=self.task.name,
-            fold=self.fold
-        )
+    @property
+    def _predictions_file(self):
+        return os.path.join(self.predictions_dir, self.task.name, str(self.fold), "predictions.csv")
+
+    @property
+    def _metadata_file(self):
+        return os.path.join(self.predictions_dir, self.task.name, str(self.fold), "metadata.json")
 
 
 class Result:
@@ -398,10 +424,11 @@ class ClassificationResult(Result):
         super().__init__(predictions_df, info)
         self.classes = self.df.columns[:-2].values.astype(str, copy=False)
         self.probabilities = self.df.iloc[:, :-2].values.astype(float, copy=False)
-        self.target = Feature(0, 'class', 'categorical', self.classes, is_target=True)
+        self.target = Feature(0, 'class', 'categorical', values=self.classes, is_target=True)
         self.type = DatasetType.binary if len(self.classes) == 2 else DatasetType.multiclass
         self.truth = self._autoencode(self.truth.astype(str, copy=False))
         self.predictions = self._autoencode(self.predictions.astype(str, copy=False))
+        self.labels = self._autoencode(self.classes)
 
     def acc(self):
         return float(accuracy_score(self.truth, self.predictions))
@@ -412,12 +439,12 @@ class ClassificationResult(Result):
     def auc(self):
         if self.type != DatasetType.binary:
             # raise ValueError("AUC metric is only supported for binary classification: {}.".format(self.classes))
-            log.warning("AUC metric is only supported for binary classification: %s.", self.classes)
+            log.warning("AUC metric is only supported for binary classification: %s.", self.labels)
             return nan
-        return float(roc_auc_score(self.truth, self.probabilities[:, 1]))
+        return float(roc_auc_score(self.truth, self.probabilities[:, 1], labels=self.labels))
 
     def cm(self):
-        return confusion_matrix(self.truth, self.predictions)
+        return confusion_matrix(self.truth, self.predictions, labels=self.labels)
 
     def _per_class_errors(self):
         return [(s-d)/s for s, d in ((sum(r), r[i]) for i, r in enumerate(self.cm()))]
@@ -431,11 +458,10 @@ class ClassificationResult(Result):
         return max(self._per_class_errors())
 
     def f1(self):
-        return float(f1_score(self.truth, self.predictions))
+        return float(f1_score(self.truth, self.predictions, labels=self.labels))
 
     def logloss(self):
-        # truth_enc = self.target.one_hot_encoder.transform(self.truth)
-        return float(log_loss(self.truth, self.probabilities))
+        return float(log_loss(self.truth, self.probabilities, labels=self.labels))
 
     def _autoencode(self, vec):
         needs_encoding = not _encode_predictions_and_truth_ or (isinstance(vec[0], str) and not vec[0].isdigit())
@@ -471,14 +497,4 @@ class RegressionResult(Result):
 
 _encode_predictions_and_truth_ = False
 
-
-def save_predictions_to_file(dataset: Dataset, output_file: str,
-                             predictions=None, truth=None,
-                             probabilities=None, probabilities_labels=None,
-                             target_is_encoded=False,
-                             preview=True):
-    TaskResult.save_predictions(dataset, output_file=output_file,
-                                predictions=predictions, truth=truth,
-                                probabilities=probabilities, probabilities_labels=probabilities_labels,
-                                target_is_encoded=target_is_encoded,
-                                preview=preview)
+save_predictions = TaskResult.save_predictions

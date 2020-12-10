@@ -43,9 +43,10 @@ class Feature:
         self.index = index
         self.name = name
         self.data_type = data_type.lower() if data_type is not None else None
-        self.values = values
+        self.values = self.normalize(values).tolist() if values is not None else None
         self.has_missing_values = has_missing_values
         self.is_target = is_target
+        # print(self)
 
     def is_categorical(self, strict=True):
         if strict:
@@ -61,7 +62,8 @@ class Feature:
         return Encoder('label' if self.values is not None else 'no-op',
                        target=self.is_target,
                        encoded_type=int if self.is_target and not self.is_numerical() else float,
-                       missing_policy='mask' if self.has_missing_values else 'ignore'
+                       missing_policy='mask' if self.has_missing_values else 'ignore',
+                       normalize_fn=self.normalize
                        ).fit(self.values)
 
     @lazy_property
@@ -69,8 +71,12 @@ class Feature:
         return Encoder('one-hot' if self.values is not None else 'no-op',
                        target=self.is_target,
                        encoded_type=int if self.is_target and not self.is_numerical() else float,
-                       missing_policy='mask' if self.has_missing_values else 'ignore'
+                       missing_policy='mask' if self.has_missing_values else 'ignore',
+                       normalize_fn=self.normalize
                        ).fit(self.values)
+
+    def normalize(self, arr):
+        return np.char.lower(np.char.strip(np.asarray(arr).astype(str)))
 
     def __repr__(self):
         return repr_def(self)
