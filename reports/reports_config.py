@@ -3,7 +3,7 @@ import report.config as config
 config.renamed_frameworks = dict(
     constantpredictor_enc='constantpredictor'
 )
-config.excluded_frameworks = ['mlr3automl_hyperband_100factorlevels', 'mlr3automl_old']
+config.excluded_frameworks = ['mlr3automl_hyperband_100factorlevels', 'mlr3automl_old', 'autosklearn2_old']
 
 # config.impute_missing_with = 'constantpredictor'
 
@@ -59,7 +59,8 @@ all_results_files = {
     'final_benchmark': [
         "input/mlr3automl_portfolio_newformat.csv",
         "input/mlr3automl_eda_changes.csv",
-        "input/autosklearn_v11.csv"
+        "input/autosklearn_v11.csv",
+        "input/autosklearn_v2.csv"
     ]
 }
 
