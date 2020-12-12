@@ -57,9 +57,9 @@ all_results_files = {
         "input/mlr3automl_portfolio.csv"
     ],
     'final_benchmark': [
-        "input/mlr3automl_portfolio.csv",
-        "input/results_mlr3automl_eda_changes.csv",
-        "input/results_askl11.csv"
+        "input/mlr3automl_portfolio_newformat.csv",
+        "input/mlr3automl_eda_changes.csv",
+        "input/autosklearn_v11.csv"
     ]
 }
 
