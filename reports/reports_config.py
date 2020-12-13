@@ -51,18 +51,22 @@ all_results_files = {
         "input/results_autosklearn.csv",
         "input/mlr3automl_portfolio.csv"
     ],
+    'after_EDA': [
+        "input/mlr3automl_portfolio_newformat.csv",
+        "input/mlr3automl_eda.csv"
+    ],
     'autosklearn_comparison': [
         "input/autosklearn_old.csv",
         "input/results_autosklearn.csv",
         "input/mlr3automl_portfolio.csv"
     ],
     'final_benchmark': [
-        "input/mlr3automl_portfolio_newformat.csv",
+        # "input/mlr3automl_portfolio_newformat.csv",
         # "input/mlr3automl_eda_changes.csv",
         "input/mlr3automl_eda.csv",
-        "input/autosklearn_v11.csv",
-        "input/autosklearn_v2.csv",
-        "input/askl2_autogluon.csv"
+        "input/autosklearn_new.csv",
+        "input/H2o.csv",
+        "input/autogluon.csv"
     ]
 }
 
