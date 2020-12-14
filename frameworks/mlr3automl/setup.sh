@@ -17,7 +17,7 @@ SUDO apt-get install -y libssl-dev libcurl4-openssl-dev
 SUDO apt-get install -y libcairo2-dev libudunits2-dev
 fi
 
-SUDO Rscript -e 'options(install.packages.check.source="no"); install.packages(c("remotes"), repos="https://cloud.r-project.org/", dependencies = TRUE)'
+SUDO Rscript -e 'options(install.packages.check.source="no"); install.packages(c("remotes", "checkmate", "R6", "xgboost", "ranger", "LiblineaR", "e1071", "glmnet"), repos="https://cloud.r-project.org/", dependencies = TRUE)'
 SUDO Rscript -e 'remotes::install_github("'${REPO}'/mlr3automl")'
 SUDO Rscript -e 'remotes::install_github("'${MLR_REPO}'/mlr3@master")'
 SUDO Rscript -e 'remotes::install_github("'${MLR_REPO}'/mlr3hyperband@master")'
