@@ -18,8 +18,14 @@ SUDO apt-get install -y libcairo2-dev libudunits2-dev
 fi
 
 SUDO Rscript -e 'options(install.packages.check.source="no"); install.packages(c("remotes", "checkmate", "R6", "xgboost", "ranger", "LiblineaR", "e1071", "glmnet"), repos="https://cloud.r-project.org/", dependencies = TRUE)'
+SUDO Rscript -e 'remotes::install_github("'${MLR_REPO}'/mlr3pipelines")'
+SUDO Rscript -e 'remotes::install_github("'${MLR_REPO}'/mlr3oml")'
+SUDO Rscript -e 'remotes::install_github("'${MLR_REPO}'/paradox")'
+SUDO Rscript -e 'remotes::install_github("'${MLR_REPO}'/mlr3extralearners")'
+SUDO Rscript -e 'remotes::install_github("'${MLR_REPO}'/mlr3misc")'
 SUDO Rscript -e 'remotes::install_github("'${REPO}'/mlr3automl")'
-SUDO Rscript -e 'remotes::install_github("'${MLR_REPO}'/mlr3@master")'
 SUDO Rscript -e 'remotes::install_github("'${MLR_REPO}'/mlr3hyperband@master")'
+SUDO Rscript -e 'remotes::install_github("'${MLR_REPO}'/bbotk@master")'
+SUDO Rscript -e 'remotes::install_github("'${MLR_REPO}'/mlr3@master")'
 SUDO Rscript -e 'remotes::install_github("'${MLR_REPO}'/mlr3tuning@autotuner-notimeout")'
 
