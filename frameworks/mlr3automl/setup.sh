@@ -27,5 +27,4 @@ SUDO Rscript -e 'remotes::install_github("'${REPO}'/mlr3automl")'
 SUDO Rscript -e 'remotes::install_github("'${MLR_REPO}'/mlr3hyperband")'
 SUDO Rscript -e 'remotes::install_github("'${MLR_REPO}'/bbotk")'
 SUDO Rscript -e 'remotes::install_github("'${MLR_REPO}'/mlr3")'
-SUDO Rscript -e 'remotes::install_github("'${MLR_REPO}'/mlr3tuning@autotuner-notimeout")'
-
+SUDO Rscript -e 'remotes::install_github("'${MLR_REPO}'/mlr3tuning@110ce0892dbc14516db70608f620a4f3c423c523")'

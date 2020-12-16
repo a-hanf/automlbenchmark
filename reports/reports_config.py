@@ -66,7 +66,9 @@ all_results_files = {
         "input/mlr3automl_eda.csv",
         "input/autosklearn_new.csv",
         "input/H2o.csv",
-        "input/autogluon.csv"
+        "input/autogluon.csv",
+        # "input/mlplan.csv",
+        "input/TPOT.csv"
     ]
 }
 
